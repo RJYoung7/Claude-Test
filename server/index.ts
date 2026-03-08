@@ -3,6 +3,7 @@ import express, { Request, Response } from "express";
 import Anthropic from "@anthropic-ai/sdk";
 import cors from "cors";
 import multer from "multer";
+import sharp from "sharp";
 
 const app = express();
 const client = new Anthropic();
@@ -25,9 +26,14 @@ app.post(
         return;
       }
 
-      const base64Image = req.file.buffer.toString("base64");
-      const mediaType = (req.file.mimetype ||
-        "image/jpeg") as Anthropic.Base64ImageSource["media_type"];
+      // Resize and compress image to stay under Claude's 5MB base64 limit
+      const compressedBuffer = await sharp(req.file.buffer)
+        .resize(1568, 1568, { fit: "inside", withoutEnlargement: true })
+        .jpeg({ quality: 85 })
+        .toBuffer();
+
+      const base64Image = compressedBuffer.toString("base64");
+      const mediaType = "image/jpeg" as Anthropic.Base64ImageSource["media_type"];
 
       const response = await client.messages.create({
         model: "claude-haiku-4-5-20251001",
