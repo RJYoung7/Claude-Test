@@ -154,6 +154,64 @@ Make the recipe practical, delicious, and clearly written. Be specific with amou
   }
 });
 
+// POST /api/refine-recipe — streams a refined recipe based on user feedback
+app.post("/api/refine-recipe", async (req: Request, res: Response) => {
+  try {
+    const {
+      recipe,
+      feedback,
+      dietaryRestrictions,
+    }: { recipe: string; feedback: string; dietaryRestrictions: string[] } = req.body;
+
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders();
+
+    const restrictionsText =
+      dietaryRestrictions && dietaryRestrictions.length > 0
+        ? ` Remember to keep the recipe strictly ${dietaryRestrictions.join(", ")}.`
+        : "";
+
+    const stream = client.messages.stream({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 2048,
+      messages: [
+        {
+          role: "user",
+          content: `You are a creative chef. Generate a delicious and complete dinner recipe using the exact formatting structure shown below.`,
+        },
+        {
+          role: "assistant",
+          content: recipe,
+        },
+        {
+          role: "user",
+          content: `Please modify this recipe based on my feedback: "${feedback}"${restrictionsText}\n\nKeep the exact same markdown format as before.`,
+        },
+      ],
+    });
+
+    for await (const event of stream) {
+      if (
+        event.type === "content_block_delta" &&
+        event.delta.type === "text_delta"
+      ) {
+        res.write(
+          `data: ${JSON.stringify({ text: event.delta.text })}\n\n`
+        );
+      }
+    }
+
+    res.write("data: [DONE]\n\n");
+    res.end();
+  } catch (error) {
+    console.error("Recipe refinement error:", error);
+    res.write(`data: ${JSON.stringify({ error: "Failed to refine recipe" })}\n\n`);
+    res.end();
+  }
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`🍽️  What's for Dinner? server running on http://localhost:${PORT}`);
