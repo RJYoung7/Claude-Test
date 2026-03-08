@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import Header from "./components/Header";
 import DietaryRestrictions from "./components/DietaryRestrictions";
+import CuisineSelector from "./components/CuisineSelector";
 import IngredientsSection from "./components/IngredientsSection";
 import RecipeDisplay from "./components/RecipeDisplay";
 import SavedRecipes from "./components/SavedRecipes";
@@ -71,6 +72,7 @@ async function streamRecipeResponse(
 
 export default function App() {
   const [dietaryRestrictions, setDietaryRestrictions] = useState<string[]>([]);
+  const [cuisine, setCuisine] = useState("");
   const [ingredients, setIngredients] = useState("");
   const [appState, setAppState] = useState<AppState>("idle");
   const [recipe, setRecipe] = useState("");
@@ -96,7 +98,7 @@ export default function App() {
       const response = await fetch("/api/generate-recipe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ingredients, dietaryRestrictions }),
+        body: JSON.stringify({ ingredients, dietaryRestrictions, cuisine }),
       });
 
       if (!response.ok) throw new Error("Failed to connect to server");
@@ -109,7 +111,7 @@ export default function App() {
       );
       setAppState("idle");
     }
-  }, [ingredients, dietaryRestrictions]);
+  }, [ingredients, dietaryRestrictions, cuisine]);
 
   const refineRecipe = useCallback(
     async (feedback: string) => {
@@ -123,7 +125,7 @@ export default function App() {
         const response = await fetch("/api/refine-recipe", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ recipe: currentRecipe, feedback, dietaryRestrictions }),
+          body: JSON.stringify({ recipe: currentRecipe, feedback, dietaryRestrictions, cuisine }),
         });
 
         if (!response.ok) throw new Error("Failed to connect to server");
@@ -193,6 +195,12 @@ export default function App() {
           <DietaryRestrictions
             selected={dietaryRestrictions}
             onToggle={toggleRestriction}
+            disabled={appState === "generating"}
+          />
+
+          <CuisineSelector
+            selected={cuisine}
+            onSelect={setCuisine}
             disabled={appState === "generating"}
           />
 

@@ -78,12 +78,15 @@ app.post("/api/generate-recipe", async (req: Request, res: Response) => {
     const {
       ingredients,
       dietaryRestrictions,
-    }: { ingredients: string; dietaryRestrictions: string[] } = req.body;
+      cuisine,
+    }: { ingredients: string; dietaryRestrictions: string[]; cuisine: string } = req.body;
 
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
     res.flushHeaders();
+
+    const cuisineText = cuisine ? `Cuisine style (MUST match): ${cuisine}.` : "";
 
     const restrictionsText =
       dietaryRestrictions && dietaryRestrictions.length > 0
@@ -97,6 +100,7 @@ app.post("/api/generate-recipe", async (req: Request, res: Response) => {
 
     const prompt = `You are a creative chef. Generate a delicious and complete dinner recipe.
 
+${cuisineText}
 ${restrictionsText}
 ${ingredientsText}
 
@@ -161,17 +165,24 @@ app.post("/api/refine-recipe", async (req: Request, res: Response) => {
       recipe,
       feedback,
       dietaryRestrictions,
-    }: { recipe: string; feedback: string; dietaryRestrictions: string[] } = req.body;
+      cuisine,
+    }: { recipe: string; feedback: string; dietaryRestrictions: string[]; cuisine: string } = req.body;
 
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
     res.flushHeaders();
 
-    const restrictionsText =
-      dietaryRestrictions && dietaryRestrictions.length > 0
-        ? ` Remember to keep the recipe strictly ${dietaryRestrictions.join(", ")}.`
-        : "";
+    const constraintsText = [
+      dietaryRestrictions?.length > 0 ? `dietary restrictions: ${dietaryRestrictions.join(", ")}` : "",
+      cuisine ? `cuisine style: ${cuisine}` : "",
+    ]
+      .filter(Boolean)
+      .join("; ");
+
+    const restrictionsText = constraintsText
+      ? ` Remember to maintain the following constraints: ${constraintsText}.`
+      : "";
 
     const stream = client.messages.stream({
       model: "claude-haiku-4-5-20251001",
