@@ -124,8 +124,6 @@ Make the recipe practical, delicious, and clearly written. Be specific with amou
     const stream = client.messages.stream({
       model: "claude-opus-4-6",
       max_tokens: 2048,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      thinking: { type: "adaptive" } as any,
       messages: [{ role: "user", content: prompt }],
     });
 
